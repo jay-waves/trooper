@@ -1,4 +1,7 @@
 
+#ifndef THIRD_PARTY_TROOPER_MUTATOR_H_
+#define THIRD_PARTY_TROOPER_MUTATOR_H_
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -7,10 +10,37 @@
 #include <string_view>
 #include <vector>
 
-#include "./knobs.h"
+#include "./defs.h"
+#include "./execution_metadata.h"
+#include "./mutation_input.h"
 
 namespace trooper
 {
+
+// A simple class representing an array of up to kMaxEntrySize bytes.
+class DictEntry {
+ public:
+  static constexpr uint8_t kMaxEntrySize = 15;
+
+  explicit DictEntry(ByteSpan bytes)
+      : bytes_{},  // initialize bytes_ to all zeros
+        size_(bytes.size()) {
+    if (size_ > kMaxEntrySize) __builtin_trap();
+    memcpy(bytes_, bytes.data(), bytes.size());
+  }
+  const uint8_t *begin() const { return bytes_; }
+  const uint8_t *end() const { return bytes_ + size_; }
+  size_t size() const { return size_; }
+  bool operator<(const DictEntry &other) const {
+    return memcmp(this, &other, sizeof(*this)) < 0;
+  }
+
+ private:
+  // bytes_ must go first so that operator < is lexicographic.
+  uint8_t bytes_[kMaxEntrySize];
+  uint8_t size_;  // between kMinEntrySize and kMaxEntrySize.
+};
+
 // This class allows to mutate a ByteArray in different ways.
 // All mutations expect and guarantee that `data` remains non-empty
 // since there is only one possible empty input and it's uninteresting.
@@ -22,20 +52,10 @@ class ByteArrayMutator
 public:
   // CTOR. Initializes the internal RNG with `seed` (`seed` != 0).
   // Keeps a const reference to `knobs` throughout the lifetime.
-  ByteArrayMutator(const Knobs& knobs, uintptr_t seed) : rng_(seed), knobs_(knobs)
+  ByteArrayMutator(uintptr_t seed) : rng_(seed)
   {
     if (seed == 0)
       __builtin_trap();  // We don't include logging.h here.
-  }
-
-  // Adds `dict_entries` to an internal dictionary.
-  void AddToDictionary(const std::vector<ByteArray>& dict_entries);
-
-  // Populates the internal CmpDictionary using execution `metadata`.
-  // Returns false on failure, true otherwise.
-  bool SetMetadata(const ExecutionMetadata& metadata)
-  {
-    return cmp_dictionary_.SetFromMetadata(metadata);
   }
 
   // Takes non-empty `inputs`, produces `num_mutants` mutations in `mutants`.
@@ -87,10 +107,6 @@ public:
   // Overwrites a random part of `data` with a random dictionary entry.
   bool OverwriteFromDictionary(ByteArray& data);
 
-  // Overwrites a random part of `data` with an entry suggested by the internal
-  // CmpDictionary.
-  bool OverwriteFromCmpDictionary(ByteArray& data);
-
   // Inserts random bytes.
   bool InsertBytes(ByteArray& data);
 
@@ -131,6 +147,30 @@ public:
   }
 
 private:
+  // Given a current size and a number of bytes to add, returns the number of
+  // bytes that should be added for the resulting size to be properly aligned.
+  //
+  // If the original to_add would result in an unaligned input size, we round up
+  // to the next larger aligned size.
+  //
+  // This function respects `max_len_` and will return 0 if curr_size is already
+  // greater than or equal to `max_len_`.
+  size_t RoundUpToAdd(size_t curr_size, size_t to_add);
+
+  // Given a current size and a number of bytes to remove, returns the number of
+  // bytes that should be removed for the resulting size to be property aligned.
+  //
+  // If the original to_remove would result in an unaligned input size, we
+  // round down to the next smaller aligned size.
+  //
+  // However, we never return a number of bytes to remove that would result in a
+  // 0 size. In this case, the resulting size will be the smaller of
+  // curr_size and size_alignment_.
+  //
+  // This function respects `max_len_` and may return a larger number necessary
+  // to get the mutant's size to below `max_len_`.
+  size_t RoundDownToRemove(size_t curr_size, size_t to_remove);
+
   // Size alignment in bytes to generate mutants.
   //
   // For example, if size_alignment_ is 1, generated mutants can have any
@@ -142,8 +182,8 @@ private:
   size_t max_len_ = std::numeric_limits<size_t>::max();
 
   Rng rng_;
-  const Knobs& knobs_;
   std::vector<DictEntry> dictionary_;
-  CmpDictionary cmp_dictionary_;
 };
 }  // namespace trooper
+
+#endif  // THIRD_PARTY_TROOPER_MUTATOR_H_

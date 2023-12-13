@@ -1,37 +1,22 @@
 
 #include "./byte_mutator.h"
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <utility>
+#include <vector>
+
+#include "./defs.h"
+
 namespace trooper {
-    //============= ByteArrayMutator ===============
-size_t ByteArrayMutator::RoundUpToAdd(size_t curr_size, size_t to_add) {
-  if (curr_size >= max_len_) return 0;
-  const size_t remainder = (curr_size + to_add) % size_alignment_;
-  if (remainder != 0) {
-    to_add = to_add + size_alignment_ - remainder;
-  }
-  if (curr_size + to_add > max_len_) return max_len_ - curr_size;
-  return to_add;
-}
 
-size_t ByteArrayMutator::RoundDownToRemove(size_t curr_size, size_t to_remove) {
-  if (curr_size <= size_alignment_) return 0;
-  if (to_remove >= curr_size) return curr_size - size_alignment_;
-
-  size_t result_size = curr_size - to_remove;
-  result_size -= (result_size % size_alignment_);
-  to_remove = curr_size - result_size;
-  if (result_size == 0) {
-    to_remove -= size_alignment_;
-  }
-  if (result_size > max_len_) {
-    return curr_size - max_len_;
-  }
-  return to_remove;
-}
-
-static const KnobId knob_mutate[3] = {Knobs::NewId("mutate_same_size"),
-                                      Knobs::NewId("mutate_decrease_size"),
-                                      Knobs::NewId("mutate_increase_size")};
+// rng * knobs: [0, 0, 0, 0, 0, 0] -->
+// * same size mutate: filp bit, swap bytes, change byte, 
+// overwrite from dictionary.
+// * decrease size mutate: erase bytes.
+// * increase size mutate: insert bytes, insert from dictionary.
 
 bool ByteArrayMutator::Mutate(ByteArray &data) {
   // Individual mutator may fail to mutate and return false.
@@ -39,51 +24,33 @@ bool ByteArrayMutator::Mutate(ByteArray &data) {
   for (int iter = 0; iter < 15; iter++) {
     Fn mutator = nullptr;
     if (data.size() > max_len_) {
-      mutator = &ByteArrayMutator::MutateDecreaseSize;
+      // mutator = knobs[:-1]*rng_ 
+      // choose from decrease size + rng
     } else if (data.size() == max_len_) {
-      mutator = knobs_.Choose<Fn>({knob_mutate[0], knob_mutate[1]},
-                                  {&ByteArrayMutator::MutateSameSize,
-                                   &ByteArrayMutator::MutateDecreaseSize},
-                                  rng_());
+      mutator = ...
+      // choose from same size + decrease size + rng
     } else {
-      mutator = knobs_.Choose<Fn>(knob_mutate,
-                                  {&ByteArrayMutator::MutateSameSize,
-                                   &ByteArrayMutator::MutateIncreaseSize,
-                                   &ByteArrayMutator::MutateDecreaseSize},
-                                  rng_());
+      mutator = ...
+      // choose from same/decrease/increase size + rng
     }
     if ((this->*mutator)(data)) return true;
   }
   return false;
 }
 
-static const KnobId knob_mutate_same_size[5] = {
-    Knobs::NewId("mutate_same_size_0"), Knobs::NewId("mutate_same_size_1"),
-    Knobs::NewId("mutate_same_size_2"), Knobs::NewId("mutate_same_size_3"),
-    Knobs::NewId("mutate_same_size_4"),
-};
-
 bool ByteArrayMutator::MutateSameSize(ByteArray &data) {
-  auto mutator = knobs_.Choose<Fn>(
-      knob_mutate_same_size,
-      {&ByteArrayMutator::FlipBit, &ByteArrayMutator::SwapBytes,
-       &ByteArrayMutator::ChangeByte,
-       &ByteArrayMutator::OverwriteFromDictionary,
-       &ByteArrayMutator::OverwriteFromCmpDictionary},
-      rng_());
+  auto mutator = ...
+      // {&ByteArrayMutator::FlipBit, &ByteArrayMutator::SwapBytes,
+      //  &ByteArrayMutator::ChangeByte,
+      //  &ByteArrayMutator::OverwriteFromDictionary,
+      //  &ByteArrayMutator::OverwriteFromCmpDictionary},
   return (this->*mutator)(data);
 }
 
-static const KnobId knob_mutate_increase_size[2] = {
-    Knobs::NewId("mutate_increase_size_0"),
-    Knobs::NewId("mutate_increase_size_1"),
-};
 
 bool ByteArrayMutator::MutateIncreaseSize(ByteArray &data) {
-  auto mutator = knobs_.Choose<Fn>(
-      knob_mutate_increase_size,
-      {&ByteArrayMutator::InsertBytes, &ByteArrayMutator::InsertFromDictionary},
-      rng_());
+  auto mutator = ...
+      // {&ByteArrayMutator::InsertBytes, &ByteArrayMutator::InsertFromDictionary},
   return (this->*mutator)(data);
 }
 
@@ -145,14 +112,6 @@ bool ByteArrayMutator::EraseBytes(ByteArray &data) {
   return true;
 }
 
-void ByteArrayMutator::AddToDictionary(
-    const std::vector<ByteArray> &dict_entries) {
-  for (const ByteArray &entry : dict_entries) {
-    if (entry.size() > DictEntry::kMaxEntrySize) continue;
-    dictionary_.emplace_back(entry);
-  }
-}
-
 bool ByteArrayMutator::OverwriteFromDictionary(ByteArray &data) {
   if (dictionary_.empty()) return false;
   size_t dict_entry_idx = rng_() % dictionary_.size();
@@ -161,30 +120,6 @@ bool ByteArrayMutator::OverwriteFromDictionary(ByteArray &data) {
   size_t overwrite_pos = rng_() % (data.size() - dic_entry.size() + 1);
   std::copy(dic_entry.begin(), dic_entry.end(), data.begin() + overwrite_pos);
   return true;
-}
-
-bool ByteArrayMutator::OverwriteFromCmpDictionary(ByteArray &data) {
-  if (cmp_dictionary_.size() == 0) return false;
-  if (data.size() < CmpDictionary::kMinEntrySize) return false;
-  // Start with a random position in `data`, search though the entire `data`
-  // until some suggestion is found.
-  size_t search_start_idx = rng_() % data.size();
-  constexpr size_t kMaxNumSuggestions = 100;
-  std::vector<ByteSpan> suggestions;
-  suggestions.reserve(kMaxNumSuggestions);
-  for (size_t i = 0; i < data.size(); i++) {
-    size_t idx = (search_start_idx + i) % data.size();
-    if (idx + CmpDictionary::kMinEntrySize >= data.size()) continue;
-    ByteSpan tail{&data[idx], data.size() - idx};
-    cmp_dictionary_.SuggestReplacement(tail, suggestions);
-    if (suggestions.empty()) continue;
-    auto suggestion = suggestions[rng_() % suggestions.size()];
-    if (idx + suggestion.size() <= data.size()) {
-      std::copy(suggestion.begin(), suggestion.end(), data.begin() + idx);
-      return true;
-    }
-  }
-  return false;
 }
 
 bool ByteArrayMutator::InsertFromDictionary(ByteArray &data) {
@@ -226,8 +161,8 @@ void ByteArrayMutator::CrossOverOverwrite(ByteArray &data,
             data.begin() + pos);
 }
 
-const KnobId knob_cross_over_insert_or_overwrite =
-    Knobs::NewId("cross_over_insert_or_overwrite");
+// const KnobId knob_cross_over_insert_or_overwrite =
+//     Knobs::NewId("cross_over_insert_or_overwrite");
 
 void ByteArrayMutator::CrossOver(ByteArray &data, const ByteArray &other) {
   if (data.size() >= max_len_) {
