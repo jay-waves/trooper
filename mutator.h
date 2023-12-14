@@ -47,38 +47,23 @@ class DictEntry {
 //
 // This class is thread-compatible.
 // Typical usage is to have one such object per thread.
-class ByteArrayMutator
+class Mutator
 {
 public:
   // CTOR. Initializes the internal RNG with `seed` (`seed` != 0).
   // Keeps a const reference to `knobs` throughout the lifetime.
-  ByteArrayMutator(uintptr_t seed) : rng_(seed)
+  Mutator(uintptr_t seed) : rng_(seed)
   {
     if (seed == 0)
       __builtin_trap();  // We don't include logging.h here.
   }
-
-  // Takes non-empty `inputs`, produces `num_mutants` mutations in `mutants`.
-  // Old contents of `mutants` are discarded.
-  void MutateMany(const std::vector<MutationInputRef>& inputs, size_t num_mutants, std::vector<ByteArray>& mutants);
-
-  using CrossOverFn = void (ByteArrayMutator::*)(ByteArray&, const ByteArray&);
-
-  // Mutates `data` by inserting a random part from `other`.
-  void CrossOverInsert(ByteArray& data, const ByteArray& other);
-
-  // Mutates `data` by overwriting some of it with a random part of `other`.
-  void CrossOverOverwrite(ByteArray& data, const ByteArray& other);
-
-  // Applies one of {CrossOverOverwrite, CrossOverInsert}.
-  void CrossOver(ByteArray& data, const ByteArray& other);
 
   // Type for a Mutator member-function.
   // Every mutator function takes a ByteArray& as an input, mutates it in place
   // and returns true if mutation took place. In some cases mutation may fail
   // to happen, e.g. if EraseBytes() is called on a 1-byte input.
   // Fn is test-only public.
-  using Fn = bool (ByteArrayMutator::*)(ByteArray&);
+  using Fn = bool (Mutator::*)(ByteArray&);
 
   // All public functions below are mutators.
   // They return true iff a mutation took place.
@@ -115,6 +100,9 @@ public:
 
   // Erases random bytes.
   bool EraseBytes(ByteArray& data);
+
+  // cross over mutants
+  // ...
 
   // Set size alignment for mutants with modified sizes. Some mutators do not
   // change input size, but mutators that insert or erase bytes will produce
@@ -179,6 +167,7 @@ private:
   size_t size_alignment_ = 1;
 
   // Max length of a generated mutant in bytes.
+  // on amd64, it is 2^64-1
   size_t max_len_ = std::numeric_limits<size_t>::max();
 
   Rng rng_;

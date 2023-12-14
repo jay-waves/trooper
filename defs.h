@@ -12,7 +12,7 @@
 namespace trooper
 {
 
-// Just a good random number generator.
+// Mersenne Twister PseudoRandom Generator, 64bits
 using Rng = std::mt19937_64;
 
 using ByteArray = std::vector<uint8_t>;
