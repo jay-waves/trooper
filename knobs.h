@@ -185,16 +185,14 @@ class Knobs {
 };
 
 // weighted probability
-int selectMutationMethod(const std::vector<int>& knobs) {
+int selectMutationMethod(const std::vector<int>& knobs, uint64_t random) {
     int totalWeight = std::accumulate(knobs.begin(), knobs.end(), 0);
 
     std::uniform_int_distribution<int> dist(0, totalWeight - 1);
-    int randomValue = dist(rng_);
-
     int weightSum = 0;
     for (size_t i = 0; i < knobs.size(); ++i) {
         weightSum += knobs[i];
-        if (randomValue < weightSum) {
+        if (random < weightSum) {
             return i;  // 返回选择的变异方法索引
         }
     }
