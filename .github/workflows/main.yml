@@ -1,0 +1,35 @@
+name: Sync Wiki to Docs
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # 每天运行一次，您可以根据需要调整这个计划
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        path: main-repo
+
+    - name: Checkout wiki repository
+      uses: actions/checkout@v2
+      with:
+        repository: ${{ github.repository }}.wiki
+        path: wiki-repo
+
+    - name: Copy wiki content to docs directory
+      run: |
+        cp -r wiki-repo/. main-repo/docs/
+
+    - name: Commit and push if there are changes
+      run: |
+        cd main-repo
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git add docs/
+        git commit -m "Update docs from wiki" || exit 0   # 如果没有更改则退出
+        git push
