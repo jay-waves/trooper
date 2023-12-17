@@ -11,8 +11,7 @@
 #include <vector>
 
 #include "./defs.h"
-#include "./execution_metadata.h"
-#include "./mutation_input.h"
+#include "./knobs.h"
 
 namespace trooper
 {
@@ -51,11 +50,10 @@ class Mutator
 {
 public:
   // CTOR. Initializes the internal RNG with `seed` (`seed` != 0).
-  // Keeps a const reference to `knobs` throughout the lifetime.
-  Mutator(uintptr_t seed) : rng_(seed)
-  {
+  // Keeps a const reference to `knobs` throughout the lifetime. ??
+  Mutator(uintptr_t seed, Knobs &knobs) : rng_(seed), knobs_(knobs){
     if (seed == 0)
-      __builtin_trap();  // We don't include logging.h here.
+      __builtin_trap(); 
   }
 
   // Type for a Mutator member-function.
@@ -135,6 +133,10 @@ public:
   }
 
 private:
+  //
+  size_t kMutatorNums = 7;
+  Fn GetMutatorByKnobId(size_t knob_id);
+
   // Given a current size and a number of bytes to add, returns the number of
   // bytes that should be added for the resulting size to be properly aligned.
   //
@@ -172,6 +174,7 @@ private:
 
   Rng rng_;
   std::vector<DictEntry> dictionary_;
+  const Knobs &knobs_;
 };
 }  // namespace trooper
 

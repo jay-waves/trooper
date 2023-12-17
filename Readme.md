@@ -1,5 +1,5 @@
 
-## Reference & Acknowledgements
+## Acknowledgements
 
 [FuzzTest Engine Centipede](https://github.com/google/fuzztest), a powerful tool for fuzz testing. 
 - License: [Apache License 2.0](https://github.com/google/fuzztest/blob/main/LICENSE)
