@@ -112,15 +112,7 @@ namespace trooper
     // of true for higher values of knob.
     // If knob == 0, returns true with a ~ 50% chance.
     // `random` is a random number used to produce random choice.
-    bool GenerateBool(size_t knob_id, uint64_t random) const
-    {
-      signed_value_type signed_value = SignedValue(knob_id); // in [-128,127]
-      signed_value_type rand = random % 255 - 127;           // in [-127,127]
-      // signed_value == 127 => always true.
-      // signed_value == -128 => always false.
-      // signed_value == 0 => true ~ half the time.
-      return signed_value >= rand;
-    }
+    bool TossUp(size_t knob_id, uint64_t random) const;
 
   private:
     static size_t next_id_;
