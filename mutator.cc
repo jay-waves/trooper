@@ -19,17 +19,8 @@ namespace trooper {
   // overwrite from dictionary.
   // * decrease size mutate: erase bytes.
   // * increase size mutate: insert bytes, insert from dictionary.
-  static const size_t knob_ids[7] = {
-      Knobs::NewId("flip bit"),
-      Knobs::NewId("swap bytes"),
-      Knobs::NewId("change byte"),
-      Knobs::NewId("overwrite from dict"),
-      Knobs::NewId("insert bytes"),
-      Knobs::NewId("insert from dict"),
-      Knobs::NewId("erase bytes"),
-  };
 
-  static const Mutator::Fn mutators[7] = {
+  const Mutator::Fn Mutator::mutators_[7] = {
       &Mutator::EraseBytes,
       &Mutator::FlipBit,
       &Mutator::SwapBytes,
@@ -143,6 +134,7 @@ namespace trooper {
 
   // mutate many --> cross over
   // see https://en.wikipedia.org/wiki/Crossover_(genetic_algorithm)
+  // ...
 
   size_t Mutator::RoundUpToAdd(size_t curr_size, size_t to_add) {
     if (curr_size >= max_len_)
@@ -182,7 +174,7 @@ namespace trooper {
     // invalid knob id in mutator
     if (idx == kMutatorNums)
       __builtin_trap();
-    return mutators[idx];
+    return mutators_[idx];
   }
 
 } // namespace trooper
