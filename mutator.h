@@ -78,15 +78,6 @@ namespace trooper {
     // Applies some random mutation to data.
     bool Mutate(ByteArray& data);
 
-    // Applies some random mutation that doesn't change size.
-    bool MutateSameSize(ByteArray& data);
-
-    // Applies some random mutation that decreases size.
-    bool MutateDecreaseSize(ByteArray& data);
-
-    // Applies some random mutation that increases size.
-    bool MutateIncreaseSize(ByteArray& data);
-
     // Flips a random bit.
     bool FlipBit(ByteArray& data);
 
