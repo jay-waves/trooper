@@ -72,6 +72,9 @@ namespace trooper {
     //
     // If all knob values are zero, behaves as if they were all 1.
     size_t Choose(absl::Span<const size_t> knob_ids, uint64_t random) const;
+
+    size_t Choose2(absl::Span<const size_t> knob_ids, uint64_t random) const;
+
     // Chooses between two strategies, i.e. returns true or false.
     // Treats the value of the knob associated with `knob_id` as signed integer.
     // If knob == -128, returns false. If knob == 127 returns true.
@@ -82,6 +85,17 @@ namespace trooper {
     bool TossUp(size_t knob_id, uint64_t random) const;
 
   private:
+    // Linear Congruent Generator, fast derived prng using 
+    // Park Miller Algorithm: a * 16807 % (2^31-1) 
+    // No internal state, which means the same `x` always results
+    // in same rand output. External iteration is required
+    uint64_t LCG(uint64_t x) const {
+      x *= 16807;
+      x = (x & 0x7fffffff) + (x >> 31);
+      x = (x & 0x7fffffff) + (x >> 31);
+      return x;
+    }
+
     size_t next_id_ = 0;
     std::string_view knob_names_[kNumKnobs];
     uint8_t knobs_[kNumKnobs] = {};

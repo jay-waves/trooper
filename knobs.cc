@@ -17,8 +17,6 @@ namespace trooper {
     return next_id_++;
   };
 
-  // TODO: consider making this more similar to TossUp() and
-  // requiring 1 knob fewer than choices.size().
   size_t Knobs::Choose(absl::Span<const size_t> knob_ids, uint64_t random) const {
     size_t sum = 0;
     for (auto knob_id : knob_ids) {
@@ -37,17 +35,28 @@ namespace trooper {
     }
     __builtin_unreachable();
   }
-  // 用 TossUp 来实现 Choose, 概率算法
-  // doi.org/10.48550/arXiv.1109.3627
 
-
-  bool Knobs::TossUp(size_t knob_id, uint64_t random) const {
-    uint8_t signed_value = Value(knob_id); // in [-128,127]
-    uint8_t rand = random % 255 - 127;           // in [-127,127]
-    // signed_value == 127 => always true.
-    // signed_value == -128 => always false.
-    // signed_value == 0 => true ~ half the time.
-    return signed_value >= rand;
+  // see doi.org/10.48550/arXiv.1109.3627
+  size_t Knobs::Choose2(absl::Span<const size_t> knob_ids, uint64_t random) const {
+    size_t n = knob_ids.size();
+    uint64_t r = LCG(random);
+    size_t knob_id = knob_ids[r % n];
+    for (int i = 0; i < n; ++i) {
+      if (TossUp(knob_id, r >> 16)) return knob_id;
+      r = LCG(r); // iterate lcg
+      knob_id = knob_ids[r % n];
+    }
+    // worst lower bound, just return a random knob
+    return knob_id;
   }
 
+  // decide wether to choose knob, by the probability of knob/max
+  // map knob and random to [0, max), check if `knob >= random`
+  bool Knobs::TossUp(size_t knob_id, uint64_t random) const {
+    uint8_t knob = Value(knob_id);
+    // always true if max is 0, using short-circuit evaluation 
+    // to prevent division by 0 in `random%max`
+    // notice that `knob_max_` is class member
+    return !knob_max_ || knob >= random % knob_max_;
+  }
 } // namespace trooper
