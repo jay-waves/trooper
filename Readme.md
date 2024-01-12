@@ -8,9 +8,10 @@
 - [x] mutator: erase bytes 
 - [x] knob's roulette algorithm O(n)
 - [x] knob's probabilistic roulette algorithm O(1)
-- [ ] external interface
-- [ ] test: mutator
-- [ ] test: knob
+- [x] external interface
+- [x] test: mutator
+- [x] test: knob
+- [x] remove dependencies of absl library
 
 ## Credits 
 
@@ -19,13 +20,13 @@
 - Author: [google](https://github.com/google)
 - Modifications made by: Jay-Waves
 
+[Mini-Yaml](https://github.com/jimmiebergmann/mini-yaml), minimal yaml parser for reusing
+- License: MIT
+- Author: [Jimmie Bergmann](https://github.com/jimmiebergmann)
+
 ## Dependencies
 
-- Google Abseil 
-
-```shell
-sudo apt install libabsl-dev
-```
+...
 
 ## License
 

@@ -9,7 +9,7 @@
 #include <limits>
 #include <string_view>
 #include <vector>
-#include "absl/types/span.h"
+#include <span>
 
 #include "./defs.h"
 #include "./knobs.h"
@@ -77,7 +77,7 @@ namespace trooper {
     // Fn is test-only public.
     using Fn = bool (Mutator::*)(ByteArray&);
 
-    using SizeSpan = absl::Span<const size_t>;
+    using SizeSpan = std::span<const size_t>;
 
     // All public functions below are mutators.
     // They return true iff a mutation took place.
@@ -181,9 +181,9 @@ namespace trooper {
     Rng rng_;
     Knobs knobs_;
     static const std::array<size_t, 7> knob_ids_;
-    static const absl::Span<const size_t> strat1; // decrease size
-    static const absl::Span<const size_t> strat2; // decrease/keep
-    static const absl::Span<const size_t> strat3; // decrease/keep/increase
+    static const std::span<const size_t> strat1; // decrease size
+    static const std::span<const size_t> strat2; // decrease/keep
+    static const std::span<const size_t> strat3; // decrease/keep/increase
     static const Fn mutators_[7];
     std::vector<DictEntry> dictionary_;
   };

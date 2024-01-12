@@ -7,9 +7,8 @@
 #include <cstdio>
 #include <functional>
 #include <string_view>
+#include <span>
 
-#include "absl/types/span.h"
-#include "./defs.h"
 
 namespace trooper {
 
@@ -38,7 +37,7 @@ namespace trooper {
 
     // Sets the knobs to values from `values`. If `values.size() < kNumKnobs`,
     // only the first `values.size()` values will be set.
-    void Set(absl::Span<const uint8_t> values) {
+    void Set(std::span<const uint8_t> values) {
       size_t n = std::min(kNumKnobs, values.size());
       uint8_t max = 0;
       for (size_t i = 0; i < n; ++i) {
@@ -71,9 +70,9 @@ namespace trooper {
     // is approximately 10x more likely to return A than B.
     //
     // If all knob values are zero, behaves as if they were all 1.
-    size_t Choose(absl::Span<const size_t> knob_ids, uint64_t random) const;
+    size_t Choose(std::span<const size_t> knob_ids, uint64_t random) const;
 
-    size_t Choose2(absl::Span<const size_t> knob_ids, uint64_t random) const;
+    size_t Choose2(std::span<const size_t> knob_ids, uint64_t random) const;
 
     // Chooses between two strategies, i.e. returns true or false.
     // Treats the value of the knob associated with `knob_id` as signed integer.

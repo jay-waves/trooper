@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <utility>
 #include <vector>
-#include "absl/types/span.h"
+#include <span>
 
 #include "./defs.h"
 #include "./knobs.h"
@@ -31,11 +31,11 @@ namespace trooper {
   };
   const std::array<size_t, 7>
     Mutator::knob_ids_ = { 0, 1, 2, 3, 4, 5, 6 };
-  const absl::Span<const size_t>
+  const std::span<const size_t>
     Mutator::strat1(Mutator::knob_ids_.data(), 1);
-  const absl::Span<const size_t>
+  const std::span<const size_t>
     Mutator::strat2(Mutator::knob_ids_.data(), 5);
-  const absl::Span<const size_t>
+  const std::span<const size_t>
     Mutator::strat3(Mutator::knob_ids_.data(), 7);
 
   bool Mutator::Mutate(ByteArray& data) {

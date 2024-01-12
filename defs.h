@@ -6,8 +6,7 @@
 #include <random>
 #include <string_view>
 #include <vector>
-
-#include "absl/types/span.h"
+#include <span>
 
 namespace trooper {
 
@@ -15,7 +14,7 @@ namespace trooper {
   using Rng = std::mt19937_64;
 
   using ByteArray = std::vector<uint8_t>;
-  using ByteSpan = absl::Span<const uint8_t>;
+  using ByteSpan = std::span<const uint8_t>;
 
   inline ByteSpan AsByteSpan(std::string_view str) {
     return ByteSpan(reinterpret_cast<const uint8_t*>(str.data()), str.size());

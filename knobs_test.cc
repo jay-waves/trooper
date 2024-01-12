@@ -3,6 +3,7 @@
 #include <chrono>
 #include <array>
 #include <iostream>
+#include <span>
 
 namespace trooper {
   void Test() {
@@ -16,6 +17,7 @@ namespace trooper {
     knobs.NewId("knob4");
     knobs.NewId("knob5");
     std::array<uint8_t, 5> knob_values = { 133, 13, 8, 25, 255, };
+    std::array<size_t, 5> knob_ids = { 0, 1, 2, 3, 4 };
     knobs.Set(knob_values);
 
     // test for probabilistic selection
@@ -24,7 +26,7 @@ namespace trooper {
 
     for (size_t i = 0; i < N; ++i) {
         Rng rng(seed+i); 
-        size_t chosen_knob = knobs.Choose2({ 0, 1, 2, 3, 4}, rng());
+        size_t chosen_knob = knobs.Choose2(knob_ids, rng());
         counts[chosen_knob]++;
     }
     std::cout << "test probabilistic choose: "<<std::endl;
