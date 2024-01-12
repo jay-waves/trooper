@@ -37,11 +37,12 @@ namespace trooper {
   }
 
   // see doi.org/10.48550/arXiv.1109.3627
+  // unstable when using low values of knobs
   size_t Knobs::Choose2(absl::Span<const size_t> knob_ids, uint64_t random) const {
     size_t n = knob_ids.size();
     uint64_t r = LCG(random);
     size_t knob_id = knob_ids[r % n];
-    for (int i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
       if (TossUp(knob_id, r >> 16)) return knob_id;
       r = LCG(r); // iterate lcg
       knob_id = knob_ids[r % n];

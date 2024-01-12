@@ -9,6 +9,7 @@
 #include <limits>
 #include <string_view>
 #include <vector>
+#include "absl/types/span.h"
 
 #include "./defs.h"
 #include "./knobs.h"
@@ -49,20 +50,24 @@ namespace trooper {
   public:
     // CTOR. Initializes the internal RNG with `seed` (`seed` != 0).
     // Keeps a const reference to `knobs` throughout the lifetime. ??
-    Mutator(uintptr_t seed, Knobs& knobs) :
-      rng_(seed),
-      knobs_(knobs),
-      knob_ids_({
-        knobs.NewId("flip bit"),
-        knobs.NewId("swap bytes"),
-        knobs.NewId("change byte"),
-        knobs.NewId("overwrite from dict"),
-        knobs.NewId("insert bytes"),
-        knobs.NewId("insert from dict"),
-        knobs.NewId("erase bytes"),
-      }) {
+    Mutator(uintptr_t seed) :
+      rng_(seed) {
       if (seed == 0)
         __builtin_trap();
+
+      // registe knob ids
+      knobs_.NewId("erase bytes");
+      knobs_.NewId("flip bit");
+      knobs_.NewId("swap bytes");
+      knobs_.NewId("change byte");
+      knobs_.NewId("overwrite from dict");
+      knobs_.NewId("insert bytes");
+      knobs_.NewId("insert from dict");
+    }
+
+    // Get to access the Knobs instance
+    Knobs& knobs() {
+      return knobs_;
     }
 
     // Type for a Mutator member-function.
@@ -71,6 +76,8 @@ namespace trooper {
     // to happen, e.g. if EraseBytes() is called on a 1-byte input.
     // Fn is test-only public.
     using Fn = bool (Mutator::*)(ByteArray&);
+
+    using SizeSpan = absl::Span<const size_t>;
 
     // All public functions below are mutators.
     // They return true iff a mutation took place.
@@ -168,14 +175,17 @@ namespace trooper {
     size_t size_alignment_ = 1;
 
     // Max length of a generated mutant in bytes.
-    // on amd64, it is 2^64-1
+    // initialize with max length of size_t
     size_t max_len_ = std::numeric_limits<size_t>::max();
 
     Rng rng_;
-    std::vector<DictEntry> dictionary_;
-    const Knobs& knobs_;
-    const size_t knob_ids_[7];
+    Knobs knobs_;
+    static const std::array<size_t, 7> knob_ids_;
+    static const absl::Span<const size_t> strat1; // decrease size
+    static const absl::Span<const size_t> strat2; // decrease/keep
+    static const absl::Span<const size_t> strat3; // decrease/keep/increase
     static const Fn mutators_[7];
+    std::vector<DictEntry> dictionary_;
   };
 }  // namespace trooper
 

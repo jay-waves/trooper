@@ -9,27 +9,24 @@
 
 #include "absl/types/span.h"
 
-namespace trooper
-{
+namespace trooper {
 
-// Mersenne Twister PseudoRandom Generator, 64bits
-using Rng = std::mt19937_64;
+  // Mersenne Twister PseudoRandom Generator, 64bits
+  using Rng = std::mt19937_64;
 
-using ByteArray = std::vector<uint8_t>;
-using ByteSpan = absl::Span<const uint8_t>;
+  using ByteArray = std::vector<uint8_t>;
+  using ByteSpan = absl::Span<const uint8_t>;
 
-inline ByteSpan AsByteSpan(std::string_view str)
-{
-  return ByteSpan(reinterpret_cast<const uint8_t*>(str.data()), str.size());
-}
+  inline ByteSpan AsByteSpan(std::string_view str) {
+    return ByteSpan(reinterpret_cast<const uint8_t*>(str.data()), str.size());
+  }
 
-inline std::string_view AsStringView(ByteSpan str)
-{
-  return std::string_view(reinterpret_cast<const char*>(str.data()), str.size());
-}
+  inline std::string_view AsStringView(ByteSpan str) {
+    return std::string_view(reinterpret_cast<const char*>(str.data()), str.size());
+  }
 
-// KPathMax >= PATH_MAX
-constexpr size_t kPathMax = 4096;
+  // KPathMax >= PATH_MAX
+  constexpr size_t kPathMax = 4096;
 
 }  // namespace trooper
 

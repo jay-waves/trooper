@@ -29,10 +29,14 @@ namespace trooper {
       &Mutator::InsertBytes,
       &Mutator::InsertFromDictionary,
   };
-
-  absl::Span<const size_t> strategy1(knob_ids, 1); // decrease size
-  absl::Span<const size_t> strategy2(knob_ids, 5); // decrease/same
-  absl::Span<const size_t> strategy3(knob_ids); // decrease/same/increase
+  const std::array<size_t, 7>
+    Mutator::knob_ids_ = { 0, 1, 2, 3, 4, 5, 6 };
+  const absl::Span<const size_t>
+    Mutator::strat1(Mutator::knob_ids_.data(), 1);
+  const absl::Span<const size_t>
+    Mutator::strat2(Mutator::knob_ids_.data(), 5);
+  const absl::Span<const size_t>
+    Mutator::strat3(Mutator::knob_ids_.data(), 7);
 
   bool Mutator::Mutate(ByteArray& data) {
     // Individual mutator may fail to mutate and return false.
@@ -41,11 +45,11 @@ namespace trooper {
       Fn mutator = nullptr;
       size_t mutator_id = knobs_.kNumKnobs; // just an invalid num
       if (data.size() > max_len_)
-        mutator_id = knobs_.Choose(strategy1, rng_());
+        mutator_id = knobs_.Choose(strat1, rng_());
       else if (data.size() == max_len_)
-        mutator_id = knobs_.Choose(strategy2, rng_());
+        mutator_id = knobs_.Choose(strat2, rng_());
       else
-        mutator_id = knobs_.Choose(strategy3, rng_());
+        mutator_id = knobs_.Choose(strat3, rng_());
       mutator = GetMutatorByKnobId(mutator_id);
       if ((this->*mutator)(data))
         return true;
@@ -169,7 +173,7 @@ namespace trooper {
   Mutator::Fn Mutator::GetMutatorByKnobId(size_t knob_id) {
     size_t idx = 0;
     for (; idx < kMutatorNums; ++idx)
-      if (knob_id == knob_ids[idx])
+      if (knob_id == knob_ids_[idx])
         break;
     // invalid knob id in mutator
     if (idx == kMutatorNums)
