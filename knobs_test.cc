@@ -1,5 +1,5 @@
-#include "./knobs.h"
-#include "./defs.h"
+#include "knobs.h"
+#include "defs.h"
 #include <chrono>
 #include <array>
 #include <iostream>

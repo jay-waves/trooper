@@ -2,17 +2,16 @@
 #ifndef THIRD_PARTY_TROOPER_MUTATOR_H_
 #define THIRD_PARTY_TROOPER_MUTATOR_H_
 
-#include <array>
-#include <cstddef>
-#include <cstdint>
+#include <cstddef>  // import size_t
+#include <cstdint>  // import uint8_t, uintptr_t
 #include <cstring>
-#include <limits>
-#include <string_view>
-#include <vector>
-#include <span>
+#include <array>    // import array
+#include <vector>   // import vector
+#include <span>     // import span
+#include <map>      // import map
 
-#include "./defs.h"
-#include "./knobs.h"
+#include "defs.h"
+#include "knobs.h"
 
 namespace trooper {
 
@@ -48,27 +47,53 @@ namespace trooper {
   // Typical usage is to have one such object per thread.
   class Mutator {
   public:
+    // knob_ids_ is one-one mapping to mutators_
+    // knob_id is not same as its index. (see knob.h)
+    static const size_t kMutatorNums_ = 7;
+
     // CTOR. Initializes the internal RNG with `seed` (`seed` != 0).
     // Keeps a const reference to `knobs` throughout the lifetime. ??
-    Mutator(uintptr_t seed) :
-      rng_(seed) {
+    Mutator(uintptr_t seed, Knobs& knobs) :
+      rng_(seed), knobs_(knobs),
+      knob_ids_{
+        knobs_.NewId("erase bytes"),
+        knobs_.NewId("flip bit"),
+        knobs_.NewId("swap bytes"),
+        knobs_.NewId("change byte"),
+        knobs_.NewId("overwrite from dict"),
+        knobs_.NewId("insert bytes"),
+        knobs_.NewId("insert from dict"),
+      },
+      knob_to_mutators_{
+        {knob_ids_[0], &Mutator::EraseBytes},
+        {knob_ids_[1], &Mutator::FlipBit},
+        {knob_ids_[2], &Mutator::SwapBytes},
+        {knob_ids_[3], &Mutator::ChangeByte},
+        {knob_ids_[4], &Mutator::OverwriteFromDictionary},
+        {knob_ids_[5], &Mutator::InsertBytes},
+        {knob_ids_[6], &Mutator::InsertFromDictionary},
+      },
+      strat1_(knob_ids_.data(), 1),
+      strat2_(knob_ids_.data(), 5),
+      strat3_(knob_ids_.data(), 7)
+    {
       if (seed == 0)
         __builtin_trap();
-
-      // registe knob ids
-      knobs_.NewId("erase bytes");
-      knobs_.NewId("flip bit");
-      knobs_.NewId("swap bytes");
-      knobs_.NewId("change byte");
-      knobs_.NewId("overwrite from dict");
-      knobs_.NewId("insert bytes");
-      knobs_.NewId("insert from dict");
+      // some built-in dictionaries
+      set_dictionary();
     }
 
-    // Get to access the Knobs instance
-    Knobs& knobs() {
-      return knobs_;
+    // Get to access the Knobs instance.
+    // Should not add more knobs into mutator's private knobs.
+    Knobs& knobs() { return knobs_; }
+
+    // get knobs' id in this mutator.
+    std::array<size_t, kMutatorNums_> knob_ids() {
+      return knob_ids_;
     }
+
+    // add `dict_entries` to an internal dictionary
+    void add_dictionary(const ByteArray& entry);
 
     // Type for a Mutator member-function.
     // Every mutator function takes a ByteArray& as an input, mutates it in place
@@ -136,11 +161,56 @@ namespace trooper {
     }
 
   private:
-    // knob_ids_ is one-one mapping to mutators_
-    // knob_id is not same as its index. (see knob.h)
-    // get mutator by knob id
-    size_t kMutatorNums = 7;
-    Fn GetMutatorByKnobId(size_t knob_id);
+    void set_dictionary() {
+      add_dictionary({ 0x00 });
+      add_dictionary({ 0xFF });
+      add_dictionary({ 0x7F, 0xFF });
+      add_dictionary({ 0x80, 0x00 });
+      add_dictionary({ 0xFF, 0xFF });
+      add_dictionary({ 0x01, 0x00, 0x00 });
+      add_dictionary({ 0x7F, 0xFF, 0xFF });
+      add_dictionary({ 0x80, 0x00, 0x00 });
+      add_dictionary({ 0xFF, 0xFF, 0xFF });
+      add_dictionary({ 0x7F, 0xFF, 0xFF, 0xFF });
+      add_dictionary({ 0x80, 0x00, 0x00, 0x00 });
+      add_dictionary({ 0xFF, 0xFF, 0xFF, 0xFF });
+      add_dictionary({ 0x7F, 0xFF, 0xFF, 0xFF, 0xFF });
+      add_dictionary({ 0x80, 0x00, 0x00, 0x00, 0x00 });
+      add_dictionary({ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
+      add_dictionary({ 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
+      add_dictionary({ 0x80, 0x00, 0x00, 0x00, 0x00, 0x00 });
+      add_dictionary({ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
+      add_dictionary({ 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
+      add_dictionary({ 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
+      add_dictionary({ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
+      add_dictionary({ 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
+      add_dictionary({ 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 });
+      add_dictionary({ 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF });
+      // 32bit IEEE754
+      add_dictionary({ 0x7F, 0x7F, 0xFF, 0xFF }); // max positive float
+      add_dictionary({ 0x00, 0x80, 0x00, 0x00 }); // min positive normalized float
+      add_dictionary({ 0x7F, 0x80, 0x00, 0x00 }); // positive infinity
+      add_dictionary({ 0x7F, 0xC0, 0x00, 0x00 }); // NaN
+      // 64bit IEEE754
+      add_dictionary({ 0x7F, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF }); // max positive float
+      add_dictionary({ 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }); // min positive normalized float
+      add_dictionary({ 0x7F, 0xF0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }); // positive infinity
+      add_dictionary({ 0x7F, 0xF8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }); // NaN
+      // mode value
+      add_dictionary({ 0xAA, 0xAA });
+      add_dictionary({ 0x55, 0x55 });
+      // specail value
+      add_dictionary({ 0x0A }); // CR, \r
+      add_dictionary({ 0x0D }); // LF, \n
+      add_dictionary({ 0x0A, 0x0D }); // \r\n
+      // unicode BOM
+      add_dictionary({ 0xEF, 0xBB, 0xBF }); // utf-8
+      add_dictionary({ 0xFE, 0xFF }); // utf-16
+      add_dictionary({ 0xFF, 0xFE }); // utf-16
+      // align, padding
+      add_dictionary({ 0xAB, 0xAB, 0xAB, 0xAB });
+      add_dictionary({ 0xCD, 0xCD, 0xCD, 0xCD });
+    }
 
     // Given a current size and a number of bytes to add, returns the number of
     // bytes that should be added for the resulting size to be properly aligned.
@@ -179,12 +249,13 @@ namespace trooper {
     size_t max_len_ = std::numeric_limits<size_t>::max();
 
     Rng rng_;
-    Knobs knobs_;
-    static const std::array<size_t, 7> knob_ids_;
-    static const std::span<const size_t> strat1; // decrease size
-    static const std::span<const size_t> strat2; // decrease/keep
-    static const std::span<const size_t> strat3; // decrease/keep/increase
-    static const Fn mutators_[7];
+    Knobs& knobs_;
+    const std::array<size_t, kMutatorNums_>knob_ids_;
+    const std::map<size_t, Fn> knob_to_mutators_;
+
+    const std::span<const size_t> strat1_; // decrease size
+    const std::span<const size_t> strat2_; // decrease/keep
+    const std::span<const size_t> strat3_; // decrease/keep/increase
     std::vector<DictEntry> dictionary_;
   };
 }  // namespace trooper

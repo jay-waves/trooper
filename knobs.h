@@ -39,13 +39,18 @@ namespace trooper {
     // only the first `values.size()` values will be set.
     void Set(std::span<const uint8_t> values) {
       size_t n = std::min(kNumKnobs, values.size());
-      uint8_t max = 0;
       for (size_t i = 0; i < n; ++i) {
         knobs_[i] = values[i];
-        if (values[i] > max)
-          max = values[i];
+        if (values[i] > knob_max_)
+          knob_max_ = values[i];
       }
-      knob_max_ = max;
+    }
+
+    // set value of knob with this id
+    void Set(uint8_t value, size_t knob_id) {
+      knobs_[knob_id] = value;
+      if (value > knob_max_)
+        knob_max_ = value;
     }
 
     // Returns the value associated with `knob_id`.
@@ -63,6 +68,9 @@ namespace trooper {
         callback(Name(i), Value(i));
       }
     }
+
+    // return numbers of current knobs
+    size_t next_id() { return next_id_; }
 
     // Uses knob values associated with knob_ids as probability weights for
     // respective choices. E.g. if knobs.Value(knobA) == 100 and
@@ -98,7 +106,7 @@ namespace trooper {
     size_t next_id_ = 0;
     std::string_view knob_names_[kNumKnobs];
     uint8_t knobs_[kNumKnobs] = {};
-    uint8_t knob_max_;
+    uint8_t knob_max_ = 0;
   };
 
 } // namespace trooper

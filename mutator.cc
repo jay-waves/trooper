@@ -1,5 +1,5 @@
 
-#include "./mutator.h"
+#include "mutator.h"
 
 #include <algorithm>
 #include <array>
@@ -9,8 +9,10 @@
 #include <vector>
 #include <span>
 
-#include "./defs.h"
-#include "./knobs.h"
+#include <iostream>
+
+#include "defs.h"
+#include "knobs.h"
 
 namespace trooper {
 
@@ -20,37 +22,22 @@ namespace trooper {
   // * decrease size mutate: erase bytes.
   // * increase size mutate: insert bytes, insert from dictionary.
 
-  const Mutator::Fn Mutator::mutators_[7] = {
-      &Mutator::EraseBytes,
-      &Mutator::FlipBit,
-      &Mutator::SwapBytes,
-      &Mutator::ChangeByte,
-      &Mutator::OverwriteFromDictionary,
-      &Mutator::InsertBytes,
-      &Mutator::InsertFromDictionary,
-  };
-  const std::array<size_t, 7>
-    Mutator::knob_ids_ = { 0, 1, 2, 3, 4, 5, 6 };
-  const std::span<const size_t>
-    Mutator::strat1(Mutator::knob_ids_.data(), 1);
-  const std::span<const size_t>
-    Mutator::strat2(Mutator::knob_ids_.data(), 5);
-  const std::span<const size_t>
-    Mutator::strat3(Mutator::knob_ids_.data(), 7);
-
   bool Mutator::Mutate(ByteArray& data) {
     // Individual mutator may fail to mutate and return false.
     // So we iterate a few times and expect one of the mutations will succeed.
     for (int iter = 0; iter < 15; iter++) {
       Fn mutator = nullptr;
-      size_t mutator_id = knobs_.kNumKnobs; // just an invalid num
+      size_t knob_id = knobs_.kNumKnobs; // just an invalid num
       if (data.size() > max_len_)
-        mutator_id = knobs_.Choose(strat1, rng_());
+        // only decrease size mutation is acceptable
+        knob_id = knobs_.Choose(strat1_, rng_());
       else if (data.size() == max_len_)
-        mutator_id = knobs_.Choose(strat2, rng_());
+        // decrease, and same size mutation
+        knob_id = knobs_.Choose(strat2_, rng_());
       else
-        mutator_id = knobs_.Choose(strat3, rng_());
-      mutator = GetMutatorByKnobId(mutator_id);
+        // decrease, same, increase size mutation
+        knob_id = knobs_.Choose(strat3_, rng_());
+      mutator = knob_to_mutators_.at(knob_id);
       if ((this->*mutator)(data))
         return true;
     }
@@ -58,6 +45,8 @@ namespace trooper {
   }
 
   bool Mutator::FlipBit(ByteArray& data) {
+    if (!data.size())
+      return false;
     uintptr_t random = rng_();
     size_t bit_idx = random % (data.size() * 8);
     size_t byte_idx = bit_idx / 8;
@@ -68,6 +57,8 @@ namespace trooper {
   }
 
   bool Mutator::SwapBytes(ByteArray& data) {
+    if (!data.size())
+      return false;
     size_t idx1 = rng_() % data.size();
     size_t idx2 = rng_() % data.size();
     std::swap(data[idx1], data[idx2]);
@@ -75,6 +66,8 @@ namespace trooper {
   }
 
   bool Mutator::ChangeByte(ByteArray& data) {
+    if (!data.size())
+      return false;
     size_t idx = rng_() % data.size();
     data[idx] = rng_();
     return true;
@@ -136,6 +129,10 @@ namespace trooper {
     return true;
   }
 
+  void Mutator::add_dictionary(const ByteArray& entry) {
+    dictionary_.emplace_back(entry);
+  }
+
   // mutate many --> cross over
   // see https://en.wikipedia.org/wiki/Crossover_(genetic_algorithm)
   // ...
@@ -168,17 +165,6 @@ namespace trooper {
       return curr_size - max_len_;
     }
     return to_remove;
-  }
-
-  Mutator::Fn Mutator::GetMutatorByKnobId(size_t knob_id) {
-    size_t idx = 0;
-    for (; idx < kMutatorNums; ++idx)
-      if (knob_id == knob_ids_[idx])
-        break;
-    // invalid knob id in mutator
-    if (idx == kMutatorNums)
-      __builtin_trap();
-    return mutators_[idx];
   }
 
 } // namespace trooper

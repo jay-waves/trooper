@@ -1,4 +1,4 @@
-#include "./knobs.h"
+#include "knobs.h"
 
 #include <cstdio>
 #include <string_view>
