@@ -24,6 +24,9 @@
 - License: MIT
 - Author: [Jimmie Bergmann](https://github.com/jimmiebergmann)
 
+[Sqlite Modren CPP](https://github.com/SqliteModernCpp/sqlite_modern_cpp)
+- License: MIT
+
 ## Dependencies
 
 ...
