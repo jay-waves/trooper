@@ -15,11 +15,17 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/test)
 add_library(mutator SHARED mutator.cc)
 add_library(knobs SHARED knobs.cc)
 
+
 add_executable(mutator_test mutator_test.cc)
 add_executable(knobs_test knobs_test.cc)
 
-target_link_libraries(mutator_test mutator knobs)
+# enable sanitize coverage
+include(./thook.cmake)
+enable_thook(mutator_test)
+
+target_link_libraries(mutator_test PRIVATE mutator knobs)
 target_link_libraries(knobs_test knobs)
+
 
 # enable_testing()
 # add_test(NAME mutator_test COMMAND mutator_test)
