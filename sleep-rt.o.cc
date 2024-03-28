@@ -17,9 +17,11 @@
 // with -fsanitize-coverage=indirect-calls
 extern "C" void __sanitizer_cov_trace_pc_indir(void *callee){ 
   double slp_time = (double)rand() / RAND_MAX; // between 0 and 1
-  if (slp_time > 0.95){
+  if (slp_time > 0.995){
     // get a big sleep time with probabiliry of 5%
-    slp_time = 10.0 * ((double)rand() /RAND_MAX);
+    slp_time = 3.0 * ((double)rand() /RAND_MAX);
+  } else {
+    slp_time /= 10.0; // ->0
   }
   sleep(slp_time);
   //printf("sleep well!\n");
