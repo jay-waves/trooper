@@ -1,0 +1,20 @@
+{
+  "http.proxy": "http://172.18.240.1:7890",
+    "C_Cpp.errorSquiggles": "disabled",
+	"C_Cpp.codeAnalysis.clangTidy.enabled": true,
+	"C_Cpp.codeAnalysis.clangTidy.checks.enabled": [
+		"modernize-*",
+		"bugprone-*",
+		"performance-*",
+		"readability-*",
+		"cppcoreguidelines-*"
+	],
+	"C_Cpp.codeAnalysis.clangTidy.checks.disabled": [
+		"modernize-use-trailing-return-type",
+		"readability-braces-around-statements",
+		"modernize-use-nodiscard",
+		"readability-magic-numbers",
+		"performance-avoid-endl"
+	],
+	"cmake.configureOnOpen": false,
+}

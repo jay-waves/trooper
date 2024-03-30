@@ -6,47 +6,47 @@
 =func,trace-pc-guard,indirect-calls"`
 */
 #include <sanitizer/coverage_interface.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <time.h>
+#include <cstdint>
+#include <ctime>
+#include <chrono>
+#include <cstdio>
+#include <random>
+#include <thread>
 
-#include <stdio.h>
-
+using namespace std;
 
 // with -fsanitize-coverage=indirect-calls, run before callee entry
-extern "C" void __sanitizer_cov_trace_pc_indir(void *callee){ 
-  double slp_time = (double)rand() / RAND_MAX; // between 0 and 1
-  if (slp_time > 0.995){
-    // get a big sleep time with probabiliry of 0.5%
-    slp_time = 3.0 * ((double)rand() /RAND_MAX);
+extern "C" void __sanitizer_cov_trace_pc_indir(void *callee) {
+  static mt19937 gen(random_device{}()); // init PRNG
+  static uniform_real_distribution<> dis(0.0, 1.0);
+  auto slp_time = dis(gen); 
+  if (slp_time > 0.995) {
+    // get a big sleep time with probability of 0.5%
+    slp_time = 3.0 * dis(gen);
   } else {
-    slp_time /= 10.0; // ->0
+    slp_time /= 10.0;
   }
-  sleep(slp_time);
+  
+  auto sec = static_cast<int>(slp_time);
+  auto ns = static_cast<int>((slp_time - sec) * 1e9);
+  this_thread::sleep_for(chrono::seconds(sec) + chrono::nanoseconds(ns));
 
   // get symbols
   void *pc = __builtin_return_address(0);
   char pc_descr[1024];
   __sanitizer_symbolize_pc(pc, "%p %F %L", pc_descr, sizeof(pc_descr));
   fprintf(stderr, "indirect call: %s\n", pc_descr);
-
-  return;
 }
 
 // with -fsan...=trace-pc-guard
 extern "C" void __sanitizer_cov_trace_pc_guard_init(uint32_t * start, uint32_t * stop) {
-  // init PRNG
-  srand(time(NULL));
   // asan report path
   __sanitizer_set_report_path("/home/JayWaves/log/asan");
-
 }
 
 // with -fsan...=func,trace-pc-guard, run after func entry 
 extern "C" void __sanitizer_cov_trace_pc_guard(uint32_t * guard) {
   // do nothing
-  return;
 }
 
   // the full list of available symbolization placeholders:
