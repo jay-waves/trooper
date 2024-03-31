@@ -5,43 +5,47 @@
 2. pass this object to cmake args: `-DCMAKE_CXX_FLAGS="sleep-rt.o -fsanitize-coverage
 =func,trace-pc-guard,indirect-calls"`
 */
-#include <sanitizer/coverage_interface.h>
-#include <cstdint>
-#include <ctime>
-#include <chrono>
-#include <cstdio>
-#include <random>
-#include <thread>
 
-using namespace std;
+#include <sanitizer/coverage_interface.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <pthread.h>
+
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 
 // with -fsanitize-coverage=indirect-calls, run before callee entry
 extern "C" void __sanitizer_cov_trace_pc_indir(void *callee) {
-  static mt19937 gen(random_device{}()); // init PRNG
-  static uniform_real_distribution<> dis(0.0, 1.0);
-  auto slp_time = dis(gen); 
+  pthread_mutex_lock(&lock); // lock PRNG
+  double slp_time = (double)rand() / RAND_MAX;
   if (slp_time > 0.995) {
     // get a big sleep time with probability of 0.5%
-    slp_time = 3.0 * dis(gen);
+    slp_time = 3.0 * ((double)rand() / RAND_MAX);
   } else {
     slp_time /= 10.0;
   }
+  pthread_mutex_unlock(&lock); //  release lock 
   
-  auto sec = static_cast<int>(slp_time);
-  auto ns = static_cast<int>((slp_time - sec) * 1e9);
-  this_thread::sleep_for(chrono::seconds(sec) + chrono::nanoseconds(ns));
+  int sec = (int)slp_time;
+  int ns = (int)((slp_time - sec) * 1e9);
+  struct timespec req = {sec, ns};
+  nanosleep(&req, NULL); 
 
   // get symbols
   void *pc = __builtin_return_address(0);
   char pc_descr[1024];
   __sanitizer_symbolize_pc(pc, "%p %F %L", pc_descr, sizeof(pc_descr));
   fprintf(stderr, "indirect call: %s\n", pc_descr);
+
 }
+
 
 // with -fsan...=trace-pc-guard
 extern "C" void __sanitizer_cov_trace_pc_guard_init(uint32_t * start, uint32_t * stop) {
   // asan report path
   __sanitizer_set_report_path("/home/JayWaves/log/asan");
+  // init PRNG
+  srand(time(NULL)); // 使用当前时间作为随机数种子
 }
 
 // with -fsan...=func,trace-pc-guard, run after func entry 
